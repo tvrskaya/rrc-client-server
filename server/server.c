@@ -8,6 +8,7 @@
 #include <netinet/in.h>
 #include <netinet/sctp.h>
 #include <UL-CCCH-Message.h>
+#include <UL-DCCH-Message.h>
 
 #include <Utils/RRCUtils.h>
 
@@ -64,8 +65,8 @@ int main() {
         // read data from the client and print it
         ssize_t valread = sctp_recvmsg(new_socket, buffer, BUFFER_SIZE, NULL, 0, 0, 0);
         if (valread < 0) {
-            printf("Fail to get bytes from message(");
-            return -1;
+            printf("Fail to get bytes from message(\n");
+            exit(EXIT_FAILURE);
         }
 
         //при использовании функции ловлю сегфолт, так и не понял, почему
@@ -76,7 +77,7 @@ int main() {
         rval = asn_decode(NULL, ATS_CANONICAL_XER, &asn_DEF_UL_CCCH_Message, (void**)&msg, buffer, valread);
         if (rval.code == RC_FAIL) {
             printf("Fail to decode msg\n");
-            exit(1);
+            exit(EXIT_FAILURE);
         }
         xer_fprint(stdout, &asn_DEF_UL_CCCH_Message, msg);
 
@@ -88,11 +89,24 @@ int main() {
         int ret = sctp_sendmsg(new_socket, bufferSetup, lenSetup, NULL, 0, 0, 0, 0, 0, 0);
         if (ret < 0) {
             printf("Error when sending msg\n");
-            exit(1);
+            exit(EXIT_FAILURE);
         }
-        
+        uint8_t bufferComplete[BUFFER_SIZE] = {0};
+        valread = sctp_recvmsg(new_socket, bufferComplete, BUFFER_SIZE, NULL, 0, 0, 0);
+        if (valread < 0) {
+            printf("Fail to get bytes from message(\n");
+            exit(EXIT_FAILURE);
+        }
 
-
+        printf("%ld\n", valread);
+        UL_DCCH_Message_t* msgComplete = 0;
+        rval = asn_decode(NULL, ATS_CANONICAL_XER, &asn_DEF_UL_DCCH_Message, (void**)&msgComplete, bufferComplete, valread);
+        if (rval.code == RC_FAIL) {
+            printf("Fail to decode msg\n");
+            exit(EXIT_FAILURE);
+        }
+        xer_fprint(stdout, &asn_DEF_UL_DCCH_Message, msgComplete);
+        printf("Connection established!!!!!!!\n");
     }
 
     // close the socket

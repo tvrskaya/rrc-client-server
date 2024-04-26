@@ -65,5 +65,19 @@ int main(void) {
     }
     xer_fprint(stdout, &asn_DEF_DL_CCCH_Message, msg);
 
+
+    uint8_t* bufferComplete;
+    ssize_t lenComplete;
+    RRCConnectionSetupComplete_coder(&bufferComplete, &lenComplete);
+
+    ret = sctp_sendmsg(sockfd, bufferComplete, lenComplete, NULL, 0, 0, 0, 0, 0, 0);
+    if (ret < 0) {
+        printf("Error when sending msg\n");
+        exit(1);
+    }
+
+    printf("Sent packet\n");
+
+
     close(sockfd);
 }

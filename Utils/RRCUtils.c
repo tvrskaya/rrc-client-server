@@ -1,6 +1,7 @@
 #include "RRCUtils.h"
 #include <UL-CCCH-Message.h>
 #include <DL-CCCH-Message.h>
+#include <UL-DCCH-Message.h>
 
 void RRCConnectionRequest_coder(uint8_t **buffer, ssize_t *len) {
     UL_CCCH_Message_t* msg;
@@ -95,6 +96,46 @@ void RRCConnectionSetup_coder(uint8_t **buffer, ssize_t *len) {
     }
 }
 
+void RRCConnectionSetupComplete_coder(uint8_t **buffer, ssize_t *len) {
+    UL_DCCH_Message_t *msg;
+    UL_DCCH_MessageType_t *msgType;
+    RRCConnectionSetupComplete_t *rrc;
+
+    msg = (UL_DCCH_Message_t*)calloc(1, sizeof(UL_DCCH_Message_t));
+    msgType = (UL_DCCH_MessageType_t*)calloc(1, sizeof(UL_DCCH_MessageType_t));
+    rrc = (RRCConnectionSetupComplete_t*)calloc(1, sizeof(RRCConnectionSetupComplete_t));
+
+    //Заполнение структуры RRCConnectionSetupComplete_t
+    rrc->rrc_TransactionIdentifier = 1;
+    rrc->criticalExtensions.present = RRCConnectionSetupComplete__criticalExtensions_PR_c1;
+    rrc->criticalExtensions.choice.c1.present = RRCConnectionSetupComplete__criticalExtensions__c1_PR_rrcConnectionSetupComplete_r8;
+    rrc->criticalExtensions.choice.c1.choice.rrcConnectionSetupComplete_r8.selectedPLMN_Identity = 25011; //Возьмем plmn yota
+    char* NAS = "111FFF"; //Случайный набор(неуспеваю)
+    rrc->criticalExtensions.choice.c1.choice.rrcConnectionSetupComplete_r8.dedicatedInfoNAS.buf = (uint8_t*)NAS;
+    rrc->criticalExtensions.choice.c1.choice.rrcConnectionSetupComplete_r8.dedicatedInfoNAS.size = sizeof(NAS);
+    //Заполнение структуры UL_DCCH_MessageType_t
+    msgType->present = UL_DCCH_MessageType_PR_c1;
+    msgType->choice.c1.present = UL_DCCH_MessageType__c1_PR_rrcConnectionSetupComplete;
+    msgType->choice.c1.choice.rrcConnectionSetupComplete = *rrc;
+
+    //заполнение структуры UL_DCCH_Message_t
+    msg->message = *msgType;
+    asn_encode_to_new_buffer_result_t res = {NULL, {0, NULL, NULL}};
+    res = asn_encode_to_new_buffer(NULL, ATS_CANONICAL_XER, &asn_DEF_UL_DCCH_Message, msg);
+
+    *buffer = res.buffer;
+    *len = res.result.encoded;
+
+    if (*buffer == NULL) {
+        fprintf(stderr, "Error enconing rrc pdu\n");
+        exit(1);
+    } else {
+        fprintf(stderr, "Encoded pdu\n");
+        xer_fprint(stdout, &asn_DEF_UL_DCCH_Message, msg);
+    }
+}
+
+//не знаю почему, но декодер не хочет мне ничего декодировать(сегфолт)
 void RRCConnectionRequest_decoder(uint8_t **buffer, ssize_t *len) {
     UL_CCCH_Message_t* msg = 0;
     asn_dec_rval_t rval; //decoder return value
